@@ -5,9 +5,13 @@
 	</head>
 	<body>
 		<h1>Youtube Map</h1>
-		<form id="search_form">
+		<form id="search_query_form">
+			<input type="text" id="query" value="love">
+			<input type="submit" value="Search">
+		</form>
+		<form id="search_id_form">
 			<input type="text" id="id" value="hsAB9utQ3cI">
-			<input type="submit" id="search" value="Map">
+			<input type="submit" value="Map">
 		</form>
 
 		<div>
@@ -22,6 +26,7 @@
 	    <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
 	    <div id="player"></div>
 
+	    <h2>Results</h2>
 		<div id="search_result" style="font-size:18px"></div>
 		<div id="related"></div>
 		<script type="text/javascript" src="lib/jquery-3.2.1.min.js"></script>

@@ -9,25 +9,48 @@ var depth = 3
 var children = 3
 var max = 0
 
-for(var i = 0; i <= depth; i++){
-	max += Math.pow(children, i)
-}
+setMax()
 
 console.log(max)
 
-$('#search_form').submit(function(){
+$('#search_query_form').submit(function(){
+	event.preventDefault()
+	var query = $('#query').val()
+	search(query, function(result){
+		console.log(result)
+		var id = result[0]['id']['videoId']
+		tree = []
+		player.loadVideoById(id)
+		getRelated(id, tree, recurse, 0)
+	})
+})
+
+$('#search_id_form').submit(function(){
 	event.preventDefault()
 	var id = $('#id').val()
-
+	tree = []
+	player.loadVideoById(id)
 	getRelated(id, tree, recurse, 0)
 })
 
 
 
-function getRelated(id, head, cb, cd, cc){
+function setMax(){
+	for(var i = 0; i <= depth; i++){
+		max += Math.pow(children, i)
+	}
+}
+
+function search(query, cb){
+	$.get("search/" + query, function(result){
+		cb(result)
+	})
+}
+
+function getRelated(id, head, cb, cd){
 	$.get("related/" + id, function(related){
 		related = JSON.parse(related)
-		cb(related, head, cd, cc)
+		cb(related, head, cd)
 	})	
 }
 
@@ -40,12 +63,16 @@ function recurse(related, head, current_depth){
 			head.push({
 				title: i['snippet']['title'],
 				id: i['id']['videoId'],
+				thumbnail: i['snippet']['thumbnails']['medium']['url'],
+				depth: current_depth,
 				related: []
 			})
 		}else{
 			head['related'].push({
 				title: i['snippet']['title'],
 				id: i['id']['videoId'],
+				thumbnail: i['snippet']['thumbnails']['medium']['url'],
+				depth: current_depth,
 				related: []
 			})	
 		}
@@ -68,39 +95,67 @@ function recurse(related, head, current_depth){
 	}else if(max == 0){
 			console.log('done')
 			console.log(tree)
-			render("", null, 0, true)
+			setMax()
+			$('#related').html(render("", null, 0, true))
+
 	}
 
 }
 
-function render(temp, bit, depth, init){
-	var indent = ""
-	while(indent.length < depth * 7){
-		indent += "~~"
+
+//DFS
+// function render(temp, bit, depth, init){
+// 	if(bit && bit.length > 0){
+// 		depth++
+// 		for(var i = 0; i < bit.length; i++){
+// 			temp += "<img style='vertical-align:middle;width:" + imgWidth(depth) + "px'src='" + bit[i]['thumbnail'] +"'><a style='font-size: " + fontSize(depth) + "px' href='javascript:void(0)' class='play_vid' data-id=" + bit[i]['id'] + ">" + bit[i]['title'] + "</a><br><br>"
+// 			temp = render(temp, bit[i]['related'], depth)
+// 		}
+// 	}else if(init){
+// 		depth++
+// 		for(var i = 0; i < tree.length; i++){
+// 			temp += "<img style='vertical-align:middle;' src='" + tree[i]['thumbnail'] +"'><a style='font-size: " + fontSize(depth) + "px' href='javascript:void(0)' class='play_vid' data-id=" + tree[i]['id'] + ">" + tree[i]['title'] + "</a><br><br>"
+// 			temp = render(temp, tree[i]['related'], depth)
+// 		}
+// 	}
+// 	return temp
+// }
+
+//BFS
+function render(temp){
+	var q = []
+	for(var i = 0; i < tree.length; i++){
+		q.push(tree[i])
+		temp += "<img style='vertical-align:middle;width:" + imgWidth(1) + "px' src='" + tree[i]['thumbnail'] +"'><a style='font-size: " + fontSize(depth) + "px' href='javascript:void(0)' class='play_vid' data-id=" + tree[i]['id'] + ">" + tree[i]['title'] + "</a><br><br>"
 	}
-	if(bit && bit.length > 0){
-		depth++
-		for(var i = 0; i < bit.length; i++){
-			temp += indent
-			temp += "<a style='font-size: " + fontSize(depth) + "px' href='javascript:void(0)' class='play_vid' data-id=" + bit[i]['id'] + ">" + bit[i]['title'] + "</a><br>"
-			temp = render(temp, bit[i]['related'], depth)
-		}
-	}else if(init){
-		depth++
-		for(var i = 0; i < tree.length; i++){
-			temp += "<a style='font-size: " + fontSize(depth) + "px' href='javascript:void(0)' class='play_vid' data-id=" + tree[i]['id'] + ">" + tree[i]['title'] + "</a><br>"
-			temp = render(temp, tree[i]['related'], depth)
+
+	while(q.length > 0){
+		var thisNode = q.shift()
+
+		if(thisNode['related'].length > 0){
+			for(var i = 0; i < thisNode['related'].length; i++){
+				q.push(thisNode['related'][i])
+				var d = (thisNode['related'][i]['depth']) + 1
+				temp += "<img style='vertical-align:middle; width:" + imgWidth(d) + "px' src='" + thisNode['related'][i]['thumbnail'] +"'>" +
+				"<a style='font-size: " + fontSize(d) + "px' href='javascript:void(0)' class='play_vid' data-id=" + thisNode['related'][i]['id'] + ">" + thisNode['related'][i]['title'] + "</a>"+
+				"<br><br>"
+			}
 		}
 	}
-	$('#related').html(temp)
+	// temp = render(temp, tree[i]['related'], depth)
+
 	return temp
-
-	
 }
+
 
 function fontSize(depth){
 	return parseInt(depth) * -3 + 27
 }
+
+function imgWidth(depth){
+	return 320/(depth)
+}
+
 
 $('body').on("click", "a.play_vid", function(event){
 	event.preventDefault()
@@ -109,12 +164,19 @@ $('body').on("click", "a.play_vid", function(event){
 	player.loadVideoById(vid)
 })
 
+
 $('body').on("click", "a.seed", function(event){
 	event.preventDefault()
 	var vid = $(this).data("id")
 	player.loadVideoById(vid)
+	tree = []
 	getRelated(vid, tree, recurse, 0)
 })
+
+
+
+
+
 
 
   // 2. This code loads the IFrame Player API code asynchronously.
@@ -153,9 +215,10 @@ $('body').on("click", "a.seed", function(event){
     //   setTimeout(stopVideo, 6000);
     //   done = true;
     // }
-	if(event.data == YT.PlayerState.ENDED){
-		alert('end')
-	}
+
+	// if(event.data == YT.PlayerState.ENDED){
+	// 	alert('end')
+	// }
   }
   function stopVideo() {
     player.stopVideo();

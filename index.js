@@ -47,7 +47,7 @@ function searchVid(query, cb){
 			cb('Error occurred getting youtube information')
 		}else{
 			var json = JSON.parse(body)
-			var result = json['items'][0]
+			var result = json['items']
 			cb(result)
 		}
 	})	
